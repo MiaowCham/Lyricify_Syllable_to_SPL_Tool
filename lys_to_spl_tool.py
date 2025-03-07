@@ -27,10 +27,12 @@ def parse_issue_content(content):
     except Exception as e:
         logger.error(f"内容解析失败: {str(e)}")
         return 0, ''
-
+        
 def lys_to_spl(lys_text, time_offset=0):
-    """最终整合版转换核心"""
+    """完整保留括号的最终版本"""
     spl_lines = []
+    
+    # 增强正则表达式（支持嵌套括号）
     word_pattern = re.compile(r'''
         (.*?)                # 非贪婪匹配所有字符
         \s*                  # 吸收空白
@@ -42,44 +44,45 @@ def lys_to_spl(lys_text, time_offset=0):
         if not line.startswith('['):
             continue
 
-        # 分离行属性
+        # 分离属性和歌词内容
         prop_match = re.match(r'\[(\d+)\](.*)', line)
         if not prop_match:
             continue
             
-        content = prop_match.group(2)
+        prop, content = prop_match.groups()
         word_entries = word_pattern.findall(content)
         
         if not word_entries:
             continue
 
-        segments = []
+        spl_segments = []
         last_end = 0
-        for idx, (word, s, d) in enumerate(word_entries):
-            original_start = int()
+        
+        for idx, (word, start_str, duration_str) in enumerate(word_entries):
+            # 应用时间偏移
+            original_start = int(start_str)
             start = original_start + time_offset
-            duration = int(d)
+            duration = int(duration_str)
             end = original_start + duration + time_offset
             
-            # 完整保留原始格式（含空格和括号）
-            cleaned_word = word.replace('\n', ' ').replace('\r', '').rstrip()
-            if word.endswith(' '):  # 保留结尾空格
-                cleaned_word += ' '
-                
-            # 生成时间戳
-            segments.append(f"[{convert_ms(start)}]{cleaned_word}")
+            # 保留原始单词（含括号）
+            current_word = word.strip('\n\r')  # 仅去除换行符
             
-            # 处理间隔
+            # 添加起始时间戳和单词
+            spl_segments.append(f"[{convert_ms(start)}]{current_word}")
+            
+            # 检测间隔并添加结束标记
             if idx < len(word_entries)-1:
                 next_start = int(word_entries[idx+1][1]) + time_offset
                 if end < next_start:
-                    segments.append(f"[{convert_ms(end)}]")
+                    spl_segments.append(f"[{convert_ms(end)}]")
             
             last_end = end
         
-        if segments:
-            segments.append(f"[{convert_ms(last_end)}]")
-            spl_lines.append(''.join(segments))
+        # 添加行尾结束标记
+        if spl_segments:
+            spl_line = "".join(spl_segments) + f"[{convert_ms(last_end)}]"
+            spl_lines.append(spl_line)
     
     return '\n'.join(spl_lines)
 
