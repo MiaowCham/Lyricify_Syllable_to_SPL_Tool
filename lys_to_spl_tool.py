@@ -110,7 +110,7 @@ def main():
             return
 
         # 处理TTML内容
-        success, spl_output = lys_to_spl(ttml_content)
+        success, spl_output = lys_to_spl(ttml_content, 150)
 
         # 构建评论内容
         comment = []
