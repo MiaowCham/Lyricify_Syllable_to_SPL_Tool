@@ -1,0 +1,21 @@
+name: LYS 歌词转 SPL
+description: 创建 LYS 歌词转 SPL 请求
+title: "[歌词转换] "
+labels: ["LYS_to_SPL"]
+body:
+  - type: input
+    id: input_id
+    attributes:
+      label: offset
+      description: |
+        在这里输入歌词偏移量, 一般情况请填150, 没有偏移量填0
+    validations:
+      required: true
+  - type: textarea
+    id: comment
+    attributes:
+      label: LYS 歌词
+      description: |
+        请在此处填入待转换的歌词
+    validations:
+      required: false
