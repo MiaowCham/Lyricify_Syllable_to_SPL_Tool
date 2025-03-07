@@ -96,7 +96,7 @@ def main():
         # 获取Issue内容
         issue_content = issue.body
         offset, lys_content = parse_issue_content(issue_content)
-        if not ttml_content:
+        if not lys_content:
             issue.create_comment("错误：Issue内容为空")
             return
 
@@ -108,7 +108,7 @@ def main():
         if success:
             comment.append("**输出:**\n```\n" + spl_output + "\n```")
         else:
-            comment.append("正在开发，这是给开发者看的报错信息：处理失败，请检查TTML格式是否正确")
+            comment.append("正在开发，这是给开发者看的报错信息：处理失败，请检查lys格式是否正确")
 
         # 添加评论
         issue.create_comment('\n'.join(comment))
