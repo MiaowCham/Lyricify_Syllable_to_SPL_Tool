@@ -6,86 +6,65 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def convert_ms(ms, offset=0):
-    """精确处理时间偏移和负数"""
-    adjusted = int(ms) + offset
-    adjusted = max(adjusted, 0)  # 防止负时间
-    minutes, ms = divmod(adjusted, 60000)
+def convert_ms(ms):
+    """毫秒转时间戳（自动处理负数）"""
+    ms = max(int(ms), 0)  # 确保非负
+    minutes, ms = divmod(ms, 60000)
     seconds, milliseconds = divmod(ms, 1000)
     return f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
-def parse_issue_content(content):
-    """增强型Issue内容解析"""
-    try:
-        # 使用更健壮的正则表达式
-        offset_match = re.search(r'### offset\s+([\d-]+)', content, re.IGNORECASE)
-        lys_match = re.search(r'### LYS 歌词\s+((?:\[.*?\]\s*.*?\n?)+)', content, re.IGNORECASE|re.DOTALL)
-        
-        offset = int(offset_match.group(1).strip()) if offset_match else 0
-        lys_content = lys_match.group(1).strip() if lys_match else ''
-        return offset, lys_content
-    except Exception as e:
-        logger.error(f"内容解析失败: {str(e)}")
-        return 0, ''
-        
-def lys_to_spl(lys_text, time_offset=0):
-    """完整保留括号的最终版本"""
+def lys_to_spl(lys_text, offset=0):
+    """支持时间偏移的转换核心"""
     spl_lines = []
     
-    # 增强正则表达式（支持嵌套括号）
-    word_pattern = re.compile(r'''
-        (.*?)                # 非贪婪匹配所有字符
+    # 优化后的正则表达式
+    word_re = re.compile(r'''
+        ([^\n\(]*)          # 捕获组1：歌词文本（允许包含空格）
         \s*                  # 吸收空白
-        \((\d+),(\d+)\)      # 时间参数
-    ''', re.VERBOSE|re.DOTALL)
-    
+        \((\d+),(\d+)\)      # 捕获组2&3：时间参数
+    ''', re.VERBOSE)
+
     for line in lys_text.split('\n'):
         line = line.strip()
         if not line.startswith('['):
             continue
 
-        # 分离属性和歌词内容
+        # 解析行属性
         prop_match = re.match(r'\[(\d+)\](.*)', line)
         if not prop_match:
             continue
             
         prop, content = prop_match.groups()
-        word_entries = word_pattern.findall(content)
-        
-        if not word_entries:
-            continue
-
-        spl_segments = []
+        segments = []
         last_end = 0
         
-        for idx, (word, start_str, duration_str) in enumerate(word_entries):
+        # 遍历所有单词匹配项
+        cursor = 0
+        for match in word_re.finditer(content):
+            # 获取原始单词和时间
+            raw_word = match.group(1)
+            raw_start = int(match.group(2))
+            raw_duration = int(match.group(3))
+            
             # 应用时间偏移
-            original_start = int(start_str)
-            start = original_start + time_offset
-            duration = int(duration_str)
-            end = original_start + duration + time_offset
+            adjusted_start = raw_start + offset
+            adjusted_end = raw_start + raw_duration + offset
             
-            # 完整保留原始格式（含空格和括号）
-            cleaned_word = word.replace('\n', ' ').replace('\r', '').rstrip()
-            if word.endswith(' '):  # 保留结尾空格
-                cleaned_word += ' '
+            # 提取实际单词（保留所有空格）
+            actual_word = content[cursor:match.start()].rstrip('\n\r')
+            if actual_word:
+                raw_word = actual_word + raw_word
             
-            # 添加起始时间戳和单词
-            spl_segments.append(f"[{convert_ms(start)}]{cleaned_word}")
-            
-            # 检测间隔并添加结束标记
-            if idx < len(word_entries)-1:
-                next_start = int(word_entries[idx+1][1]) + time_offset
-                if end < next_start:
-                    spl_segments.append(f"[{convert_ms(end)}]")
-            
-            last_end = end
+            # 生成时间戳
+            timestamp = convert_ms(adjusted_start)
+            segments.append(f"[{timestamp}]{raw_word}")
+            last_end = adjusted_end
+            cursor = match.end()
         
-        # 添加行尾结束标记
-        if spl_segments:
-            spl_line = "".join(spl_segments) + f"[{convert_ms(last_end)}]"
-            spl_lines.append(spl_line)
-    
+        if segments:
+            end_timestamp = convert_ms(last_end)
+            spl_lines.append("".join(segments) + f"[{end_timestamp}]")
+
     return True, '\n'.join(spl_lines)
 
 def main():
@@ -117,7 +96,7 @@ def main():
         # 构建评论内容
         comment = []
         if success:
-            comment.append("**LYS 输出:**\n```\n" + spl_output + "\n```")
+            comment.append("**输出:**\n```\n" + spl_output + "\n```")
         else:
             comment.append("正在开发，这是给开发者看的报错信息：处理失败，请检查TTML格式是否正确")
 
