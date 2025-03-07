@@ -1,6 +1,6 @@
 name: LYS 歌词转 SPL
-description: 创建 LYS 歌词转 SPL 请求
-title: "[歌词转换] "
+description: 创建 LYS 歌词转 SPL 请求（标题尽量使用文件名，以便区分）
+title: "[歌词转换] 文件名"
 labels: ["LYS_to_SPL"]
 body:
   - type: input
