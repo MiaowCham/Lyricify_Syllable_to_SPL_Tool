@@ -31,7 +31,7 @@ SPL 格式（Salt Player Lyrics）是 [Salt Player](https://github.com/Moriafly/
 ### 特别鸣谢
 
 <div align="center">
-<img src="https://raw.githubusercontent.com/MiaowCham/TTML_to_Lyricify_Syllable_Tool/refs/heads/main/image/logo.webp" width="400"/>
+<img src="https://raw.githubusercontent.com/MiaowCham/Repository_for_MiaowCham/refs/heads/main/images/DeepSeek.webp" width="400"/>
 
    感谢 [**DeepSeek**](https://www.deepseek.com/) 为此项目提供的大力支持<br>本项目的 **全部代码** 均由 [**DeepSeek**](https://www.deepseek.com/) 生成
 
