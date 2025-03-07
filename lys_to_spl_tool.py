@@ -84,10 +84,11 @@ def lys_to_spl(lys_text, time_offset=0):
             spl_line = "".join(spl_segments) + f"[{convert_ms(last_end)}]"
             spl_lines.append(spl_line)
     
-    return '\n'.join(spl_lines)
+    return True, '\n'.join(spl_lines)
 
 def main():
-    """GitHub集成主函数"""
+    """GitHub Issue处理主函数"""
+    # 从环境变量获取GitHub信息
     token = os.getenv('GITHUB_TOKEN')
     issue_number = int(os.getenv('ISSUE_NUMBER'))
     repo_name = os.getenv('GITHUB_REPOSITORY')
@@ -101,34 +102,37 @@ def main():
         g = Github(token)
         repo = g.get_repo(repo_name)
         issue = repo.get_issue(number=issue_number)
-        
-        # 解析内容
-        offset, lys_content = parse_issue_content(issue.body)
-        logger.info(f"解析成功 | Offset: {offset} | 歌词行数: {len(lys_content.splitlines())}")
-        
-        if not lys_content:
-            issue.create_comment("错误：未检测到有效的LYS歌词内容")
+
+        # 获取Issue内容
+        ttml_content = issue.body
+        if not ttml_content:
+            issue.create_comment("错误：Issue内容为空")
             return
 
-        # 执行转换
-        try:
-            spl_output = lys_to_spl(lys_content, offset)
-            logger.debug(f"转换结果示例:\n{spl_output[:500]}")  # 日志记录前500字符
-            comment = f"**输出:**\n```\n{spl_output}\n```"
-        except Exception as e:
-            logger.exception("转换过程异常")
-            comment = f"错误：歌词转换失败 - {str(e)}"
+        # 处理TTML内容
+        success, spl_output = lys_to_spl(ttml_content)
 
-        # 提交结果
-        issue.create_comment(comment)
-        logger.info("处理结果已成功提交")
+        # 构建评论内容
+        comment = []
+        if success:
+            comment.append("**LYS 输出:**\n```\n" + spl_output + "\n```")
+        else:
+            comment.append("正在开发，这是给开发者看的报错信息：处理失败，请检查TTML格式是否正确")
+
+        # 添加评论
+        issue.create_comment('\n'.join(comment))
+        logger.success("处理结果已提交到Issue")
 
     except Exception as e:
-        logger.exception("GitHub操作失败")
+        logger.exception("正在开发，这是给开发者看的报错信息：GitHub操作失败")
+        # 尝试在出现异常时也发布评论，方便调试
         try:
-            issue.create_comment(f"系统错误：{str(e)}")
+            if 'issue' in locals():
+                issue.create_comment(f"正在开发，这是给开发者看的报错信息：处理过程中发生错误: {str(e)}")
         except Exception as inner_e:
-            logger.error(f"最终错误处理失败: {inner_e}")
+            logger.error(f"正在开发，这是给开发者看的报错信息：评论发布失败: {inner_e}")
+
 
 if __name__ == '__main__':
     main()
+    # 移除原文件处理相关代码
