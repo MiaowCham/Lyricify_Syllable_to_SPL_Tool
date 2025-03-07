@@ -13,6 +13,15 @@ def convert_ms(ms):
     seconds, milliseconds = divmod(ms, 1000)
     return f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
+def parse_issue_content(content):
+    """解析Issue内容提取offset和歌词"""
+    offset_match = re.search(r'### offset\s+([\d-]+)', content)
+    lys_match = re.search(r'### LYS 歌词\s+((?:\[.*?\].*?\n?)+)', content, re.DOTALL)
+    
+    offset = int(offset_match.group(1).strip()) if offset_match else 0
+    lys_content = lys_match.group(1).strip() if lys_match else ''
+    return offset, lys_content
+
 def lys_to_spl(lys_text, offset=0):
     """支持时间偏移的转换核心"""
     spl_lines = []
@@ -85,13 +94,14 @@ def main():
         issue = repo.get_issue(number=issue_number)
 
         # 获取Issue内容
-        ttml_content = issue.body
+        issue_content = issue.body
+        offset, lys_content = parse_issue_content(issue_content)
         if not ttml_content:
             issue.create_comment("错误：Issue内容为空")
             return
 
-        # 处理TTML内容
-        success, spl_output = lys_to_spl(ttml_content, 150)
+        # 处理lys内容
+        success, spl_output = lys_to_spl(issue_content, offset)
 
         # 构建评论内容
         comment = []
