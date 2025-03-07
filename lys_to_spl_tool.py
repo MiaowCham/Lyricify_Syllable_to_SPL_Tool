@@ -3,12 +3,10 @@ import re
 from github import Github
 import logging
 
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def convert_ms(ms, offset=0):
-    """毫秒转时间戳（含偏移和负值保护）"""
     adjusted = int(ms) + offset
     adjusted = max(adjusted, 0)
     minutes, ms = divmod(adjusted, 60000)
@@ -16,47 +14,46 @@ def convert_ms(ms, offset=0):
     return f"{minutes:02d}:{seconds:02d}.{milliseconds:03d}"
 
 def parse_issue_content(content):
-    """解析Issue内容提取offset和歌词"""
-    offset_match = re.search(r'### offset\s+([\d-]+)', content)
-    lys_match = re.search(r'### LYS 歌词\s+((?:\[.*?\].*?\n?)+)', content, re.DOTALL)
+    """增强型内容解析"""
+    # 匹配offset（支持空行和注释）
+    offset_match = re.search(r'^### offset\s*[\r\n]+([-\d]+)', content, re.MULTILINE)
+    # 匹配歌词内容（支持多行和特殊字符）
+    lys_match = re.search(r'^### LYS 歌词\s*[\r\n]+((?:\[.*?\].*?(?:\r?\n|$))+)', content, re.MULTILINE | re.DOTALL)
     
-    offset = int(offset_match.group(1).strip()) if offset_match else 0
-    lys_content = lys_match.group(1).strip() if lys_match else ''
+    offset = int(offset_match.group(1).strip()) if (offset_match and offset_match.group(1)) else 0
+    lys_content = lys_match.group(1).strip() if (lys_match and lys_match.group(1)) else ''
     return offset, lys_content
 
 def lys_to_spl(lys_text, time_offset=0):
-    """增强版歌词转换核心逻辑"""
+    """完整保留格式的转换核心"""
     spl_lines = []
-    word_pattern = re.compile(r'(.*?)\s*\((\d+),(\d+)\)', re.DOTALL)
+    # 增强正则（支持嵌套括号和换行）
+    line_pattern = re.compile(r'^\[(\d+)\](.*?)(?=\[\d+\]|$)', re.MULTILINE | re.DOTALL)
+    word_pattern = re.compile(r'([^\n\(]*?)\s*\((\d+),(\d+)\)', re.DOTALL)
     
-    for line in lys_text.split('\n'):
-        line = line.strip()
+    for line in [l.strip() for l in lys_text.split('\n') if l.strip()]:
         if not line.startswith('['):
             continue
-
-        prop_match = re.match(r'\[(\d+)\](.*)', line)
-        if not prop_match:
+            
+        # 提取行内容
+        content_match = line_pattern.match(line)
+        if not content_match:
             continue
             
-        content = prop_match.group(2)
+        content = content_match.group(2)
         word_entries = word_pattern.findall(content)
         
-        if not word_entries:
-            continue
-
         segments = []
         last_end = 0
-        for idx, (word, start_str, duration_str) in enumerate(word_entries):
-            original_start = int(start_str)
-            start = original_start + time_offset
-            duration = int(duration_str)
-            end = original_start + duration + time_offset
+        for idx, (word, s, d) in enumerate(word_entries):
+            start = int() + time_offset
+            end = int() + int(d) + time_offset
             
-            # 保留原始空格和括号
-            cleaned_word = word.replace('\n', ' ').strip('\r')
-            segments.append(f"[{convert_ms(start)}]{cleaned_word}")
+            # 保留原始格式（含空格和括号）
+            clean_word = word.replace('\n', ' ').replace('\r', '')
+            segments.append(f"[{convert_ms(start)}]{clean_word}")
             
-            # 检测间隔
+            # 添加间隔时间戳
             if idx < len(word_entries)-1:
                 next_start = int(word_entries[idx+1][1]) + time_offset
                 if end < next_start:
@@ -71,13 +68,12 @@ def lys_to_spl(lys_text, time_offset=0):
     return '\n'.join(spl_lines)
 
 def main():
-    """GitHub集成主处理逻辑"""
     token = os.getenv('GITHUB_TOKEN')
     issue_number = int(os.getenv('ISSUE_NUMBER'))
     repo_name = os.getenv('GITHUB_REPOSITORY')
 
     if not all([token, issue_number, repo_name]):
-        logger.error("Missing environment variables")
+        logger.error("缺少环境变量")
         return
 
     try:
@@ -85,30 +81,33 @@ def main():
         repo = g.get_repo(repo_name)
         issue = repo.get_issue(number=issue_number)
         
-        # 解析Issue内容
+        # 调试日志
+        logger.info(f"原始Issue内容:\n{issue.body}")
+        
         offset, lys_content = parse_issue_content(issue.body)
+        logger.info(f"解析结果 - offset: {offset}, 歌词长度: {len(lys_content)}")
+        
         if not lys_content:
             issue.create_comment("错误：未找到有效的LYS歌词内容")
             return
 
-        # 转换歌词
         try:
             spl_output = lys_to_spl(lys_content, offset)
+            logger.info(f"转换结果:\n{spl_output}")
             comment = f"**输出:**\n```\n{spl_output}\n```"
         except Exception as e:
             logger.exception("转换失败")
             comment = f"错误：歌词转换失败 - {str(e)}"
 
-        # 提交评论
         issue.create_comment(comment)
-        logger.info("处理结果已提交")
+        logger.info("处理完成")
 
     except Exception as e:
-        logger.exception("GitHub操作失败")
+        logger.exception("主流程异常")
         try:
             issue.create_comment(f"系统错误：{str(e)}")
-        except:
-            pass
+        except Exception as inner_e:
+            logger.error(f"评论失败: {inner_e}")
 
 if __name__ == '__main__':
     main()
