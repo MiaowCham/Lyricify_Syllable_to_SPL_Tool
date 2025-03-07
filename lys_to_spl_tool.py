@@ -65,11 +65,13 @@ def lys_to_spl(lys_text, time_offset=0):
             duration = int(duration_str)
             end = original_start + duration + time_offset
             
-            # 保留原始单词（含括号）
-            current_word = word.strip('\n\r')  # 仅去除换行符
+            # 完整保留原始格式（含空格和括号）
+            cleaned_word = word.replace('\n', ' ').replace('\r', '').rstrip()
+            if word.endswith(' '):  # 保留结尾空格
+                cleaned_word += ' '
             
             # 添加起始时间戳和单词
-            spl_segments.append(f"[{convert_ms(start)}]{current_word}")
+            spl_segments.append(f"[{convert_ms(start)}]{cleaned_word}")
             
             # 检测间隔并添加结束标记
             if idx < len(word_entries)-1:
