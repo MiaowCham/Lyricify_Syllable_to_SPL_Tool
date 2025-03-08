@@ -16,6 +16,6 @@ body:
     attributes:
       label: LYS 歌词
       description: |
-        请在此处填入待转换的歌词
+        请在此处填入待转换的歌词。不要包含头部信息，不然不保证转换结果准确性
     validations:
       required: false
