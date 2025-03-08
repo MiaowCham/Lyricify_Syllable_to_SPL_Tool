@@ -9,6 +9,9 @@ SPL 格式（Salt Player Lyrics）是 [Salt Player](https://github.com/Moriafly/
 
 ###### 源文件是 ttml? 试试 *[TTML to Lys on Github](https://github.com/HKLHaoBin/ttml_to_lys)* !
 
+> [!WARNING]
+> SPL 格式不支持 `多行同亮` `对唱视图` 和 `背景人声`
+
 ### **使用方法：**
 1. 新建`issue 议题`，选择`lys歌词转spl`模板
 3. 输入歌词的 `offset` 并将需要转换的 **lys** 格式的歌词复制到`LYS 歌词`文本框中
