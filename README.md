@@ -7,7 +7,7 @@ SPL 格式（Salt Player Lyrics）是 [Salt Player](https://github.com/Moriafly/
 
 ### > [点击这里使用 Lyricify Syllable to SPL Tool](https://github.com/MiaowCham/Lyricify_Syllable_to_SPL_Tool/issues/new/choose) <
 
-###### 源文件是 ttml? 试试 *[TTML to Lys on Github](https://github.com/HKLHaoBin/ttml_to_lys)* !
+###### 源文件是 ttml? 试试 *[ttml-translater](https://github.com/ranhengzhang/ttml-translater)* !
 
 > [!WARNING]
 > SPL 格式不支持 `多行同亮` `对唱视图` 和 `背景人声`
